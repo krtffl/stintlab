@@ -1,0 +1,21 @@
+[package]
+name = "stintlab-ingest"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+stintlab-core = { path = "../stintlab-core" }
+rusqlite = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true }
+clap = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+
+[lints]
+workspace = true

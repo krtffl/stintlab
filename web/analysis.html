@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>stintlab - Race Analysis</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <a href="/" class="back-link">&larr; Back to races</a>
+        <h1 id="race-title">Race Analysis</h1>
+    </header>
+
+    <main>
+        <section id="strategy-section" class="viz-section">
+            <h2>Strategy Timeline</h2>
+            <div class="canvas-container">
+                <canvas id="canvas-strategy" width="1200" height="600"></canvas>
+            </div>
+            <div class="viz-controls">
+                <label>
+                    <input type="checkbox" id="show-labels" checked>
+                    Show compound labels
+                </label>
+                <button id="export-strategy" class="btn-export">Export PNG</button>
+            </div>
+        </section>
+
+        <section id="laps-section" class="viz-section">
+            <h2>Lap Time Evolution</h2>
+            <div class="canvas-container">
+                <canvas id="canvas-laps" width="1200" height="500"></canvas>
+            </div>
+            <div class="viz-controls">
+                <label for="driver-filter">Drivers:</label>
+                <select id="driver-filter" multiple></select>
+                <label>
+                    <input type="checkbox" id="show-pit-markers" checked>
+                    Show pit markers
+                </label>
+                <button id="export-laps" class="btn-export">Export PNG</button>
+            </div>
+        </section>
+
+        <section id="prediction-section" class="viz-section">
+            <h2>Pit Window Prediction</h2>
+            <div class="prediction-form">
+                <label for="pred-driver">Driver:</label>
+                <select id="pred-driver"></select>
+                <label for="pred-lap">Current Lap:</label>
+                <input type="number" id="pred-lap" min="1" value="10">
+                <label for="pred-compound">Compound:</label>
+                <select id="pred-compound">
+                    <option value="Soft">Soft</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="Hard">Hard</option>
+                </select>
+                <label for="pred-age">Tire Age:</label>
+                <input type="number" id="pred-age" min="1" value="10">
+                <button id="predict-btn" class="btn-primary">Predict</button>
+            </div>
+            <div id="prediction-result" class="prediction-result hidden"></div>
+        </section>
+
+        <div id="wasm-fallback" class="hidden">
+            <p>Interactive visualizations require WebAssembly support.
+               Try a modern browser (Chrome 57+, Firefox 52+, Safari 11+).</p>
+        </div>
+    </main>
+
+    <footer>
+        <p>Built with Rust + WebAssembly</p>
+    </footer>
+
+    <script src="app.js" type="module"></script>
+</body>
+</html>
