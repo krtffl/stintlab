@@ -194,8 +194,7 @@ pub async fn get_laps(
             rusqlite::params![id],
             |row| row.get::<_, i64>(0),
         )
-        .map(|c| c > 0)
-        .unwrap_or(false);
+        .is_ok_and(|c| c > 0);
 
     if !race_exists {
         return map_error(&StintlabError::RaceNotFound(id)).into_response();
@@ -266,8 +265,7 @@ pub async fn get_stints(
             rusqlite::params![id],
             |row| row.get::<_, i64>(0),
         )
-        .map(|c| c > 0)
-        .unwrap_or(false);
+        .is_ok_and(|c| c > 0);
 
     if !race_exists {
         return map_error(&StintlabError::RaceNotFound(id)).into_response();
