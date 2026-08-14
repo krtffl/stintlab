@@ -21,9 +21,7 @@ pub fn fit_model(
     // Filter to valid laps: correct compound, has lap time, not pit in/out
     let valid: Vec<&Lap> = laps
         .iter()
-        .filter(|l| {
-            l.compound == compound && l.lap_time_ms.is_some() && !l.pit_in && !l.pit_out
-        })
+        .filter(|l| l.compound == compound && l.lap_time_ms.is_some() && !l.pit_in && !l.pit_out)
         .collect();
 
     if valid.len() < MIN_SAMPLES {
@@ -96,10 +94,7 @@ pub fn fit_model(
     };
 
     // Clamp base to non-negative and convert to u32
-    #[allow(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss
-    )]
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let base_u32 = base_lap_time_ms.round().max(0.0) as u32;
 
     #[allow(clippy::cast_possible_truncation)]
@@ -118,10 +113,7 @@ pub fn fit_model(
 
 /// Predict lap time given model parameters, tire age, and race position.
 #[must_use]
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss
-)]
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub fn predict_lap_time(
     model: &DegradationModel,
     tire_age: u16,
@@ -227,9 +219,9 @@ mod tests {
         // Generate data from 3 "drivers" with different stint starts
         // to break the collinearity between tire_age and fuel_remaining.
         let stint_configs: &[(u16, &str)] = &[
-            (1, "DR1"),   // stint starting lap 1
-            (15, "DR2"),  // stint starting lap 15
-            (25, "DR3"),  // stint starting lap 25
+            (1, "DR1"),  // stint starting lap 1
+            (15, "DR2"), // stint starting lap 15
+            (25, "DR3"), // stint starting lap 25
         ];
 
         let laps_per_driver = n / stint_configs.len();
@@ -243,8 +235,7 @@ mod tests {
                     break;
                 }
                 let fuel_remaining = f64::from(laps_total - lap_num);
-                let time = f64::from(base_ms)
-                    + slope_per_lap * f64::from(tire_age)
+                let time = f64::from(base_ms) + slope_per_lap * f64::from(tire_age)
                     - fuel_effect * fuel_remaining;
                 all_laps.push(Lap {
                     race_id: 1,

@@ -1,4 +1,4 @@
-use rusqlite::{params, Connection};
+use rusqlite::{Connection, params};
 use tracing::debug;
 
 use stintlab_core::error::StintlabError;
@@ -165,7 +165,7 @@ pub fn insert_stints(conn: &Connection, stints: &[Stint]) -> Result<usize, Stint
     Ok(count)
 }
 
-/// Save or update a degradation model (upsert on circuit_key + compound).
+/// Save or update a degradation model (upsert on `circuit_key` + compound).
 pub fn save_degradation_model(
     conn: &Connection,
     model: &DegradationModel,
@@ -234,10 +234,7 @@ pub fn load_degradation_model(
 
 /// List all races, optionally filtered by season.
 #[allow(dead_code)]
-pub fn list_races(
-    conn: &Connection,
-    season: Option<u16>,
-) -> Result<Vec<Race>, StintlabError> {
+pub fn list_races(conn: &Connection, season: Option<u16>) -> Result<Vec<Race>, StintlabError> {
     let sql = match season {
         Some(_) => {
             "SELECT id, season, round, name, circuit_key, date, laps_total

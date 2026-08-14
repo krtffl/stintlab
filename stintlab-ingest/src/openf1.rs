@@ -5,7 +5,7 @@ use tracing::{debug, warn};
 
 use stintlab_core::error::StintlabError;
 
-/// OpenF1 community tier base URL (free, no auth, 3 req/sec).
+/// `OpenF1` community tier base URL (free, no auth, 3 req/sec).
 const BASE_URL: &str = "https://api.openf1.org/v1";
 
 /// Rate limit delay between requests (community tier: 3 req/sec).
@@ -14,12 +14,12 @@ const RATE_LIMIT_DELAY: Duration = Duration::from_millis(340);
 /// Maximum retry attempts for rate-limited requests.
 const MAX_RETRIES: u32 = 3;
 
-/// OpenF1 API client for fetching historical F1 data.
+/// `OpenF1` API client for fetching historical F1 data.
 pub struct OpenF1Client {
     http: reqwest::Client,
 }
 
-/// Raw session data from OpenF1.
+/// Raw session data from `OpenF1`.
 #[derive(Debug, Clone, Deserialize)]
 #[allow(dead_code)]
 pub struct RawSession {
@@ -32,7 +32,7 @@ pub struct RawSession {
     pub year: Option<u16>,
 }
 
-/// Raw lap data from OpenF1.
+/// Raw lap data from `OpenF1`.
 #[derive(Debug, Clone, Deserialize)]
 #[allow(dead_code)]
 pub struct RawLap {
@@ -49,7 +49,7 @@ pub struct RawLap {
     pub st_speed: Option<f64>,
 }
 
-/// Raw stint data from OpenF1.
+/// Raw stint data from `OpenF1`.
 #[derive(Debug, Clone, Deserialize)]
 #[allow(dead_code)]
 pub struct RawStint {
@@ -62,7 +62,7 @@ pub struct RawStint {
     pub lap_end: Option<u16>,
 }
 
-/// Raw driver data from OpenF1.
+/// Raw driver data from `OpenF1`.
 #[derive(Debug, Clone, Deserialize)]
 #[allow(dead_code)]
 pub struct RawDriver {
@@ -94,7 +94,8 @@ impl OpenF1Client {
     ) -> Result<Vec<RawSession>, StintlabError> {
         let mut url = format!("{BASE_URL}/sessions?year={year}&session_type=Race");
         if let Some(c) = country {
-            url.push_str(&format!("&country_name={c}"));
+            url.push_str("&country_name=");
+            url.push_str(c);
         }
         debug!(url = %url, "fetching sessions");
         self.get_json(&url).await
@@ -131,15 +132,15 @@ impl OpenF1Client {
         loop {
             tokio::time::sleep(RATE_LIMIT_DELAY).await;
 
-            let response = self
-                .http
-                .get(url)
-                .send()
-                .await
-                .map_err(|e| StintlabError::OpenF1Error {
-                    status: 0,
-                    body: e.to_string(),
-                })?;
+            let response =
+                self.http
+                    .get(url)
+                    .send()
+                    .await
+                    .map_err(|e| StintlabError::OpenF1Error {
+                        status: 0,
+                        body: e.to_string(),
+                    })?;
 
             let status = response.status();
 
@@ -156,11 +157,7 @@ impl OpenF1Client {
                     .and_then(|v| v.to_str().ok())
                     .and_then(|v| v.parse::<u64>().ok())
                     .unwrap_or(2);
-                warn!(
-                    retry_after,
-                    attempt = attempts,
-                    "rate limited, backing off"
-                );
+                warn!(retry_after, attempt = attempts, "rate limited, backing off");
                 tokio::time::sleep(Duration::from_secs(retry_after)).await;
                 continue;
             }
@@ -176,12 +173,13 @@ impl OpenF1Client {
                 });
             }
 
-            let data = response.json::<T>().await.map_err(|e| {
-                StintlabError::OpenF1Error {
+            let data = response
+                .json::<T>()
+                .await
+                .map_err(|e| StintlabError::OpenF1Error {
                     status: status.as_u16(),
                     body: format!("deserialization error: {e}"),
-                }
-            })?;
+                })?;
 
             return Ok(data);
         }
