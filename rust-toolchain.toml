@@ -1,0 +1,19 @@
+# Pin the toolchain instead of tracking whatever `stable` resolves to that day.
+#
+# CI runs `dtolnay/rust-toolchain@stable` with `-D warnings` and workspace-wide
+# clippy::pedantic. That combination means a new stable can turn this repo red
+# with zero source changes: 1.97 introduced duration_suboptimal_units and
+# extended map_unwrap_or to Result, and both broke CI here on code that had not
+# been touched.
+#
+# `rustup default` (which the action sets) loses to this file, so the pin holds
+# even though the workflow still says @stable.
+#
+# targets is required, not decorative: the workflow installs wasm32 for the
+# toolchain the ACTION picked. Once stable moves past 1.97.1 that is a different
+# toolchain from the one cargo uses here, and wasm-build would fail on a missing
+# target. Listing it here installs it for the pinned toolchain.
+[toolchain]
+channel = "1.97.1"
+components = ["clippy", "rustfmt"]
+targets = ["wasm32-unknown-unknown"]
