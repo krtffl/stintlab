@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
+use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::Json;
 use serde::{Deserialize, Serialize};
 use tracing::error;
 
@@ -117,7 +117,7 @@ struct ErrorDetail {
 // Error mapping
 // ---------------------------------------------------------------------------
 
-fn map_error(err: StintlabError) -> (StatusCode, Json<ErrorResponse>) {
+fn map_error(err: &StintlabError) -> (StatusCode, Json<ErrorResponse>) {
     let (status, code) = match &err {
         StintlabError::RaceNotFound(_) => (StatusCode::NOT_FOUND, "RACE_NOT_FOUND"),
         StintlabError::DegradationModelNotFound { .. } => {
@@ -175,7 +175,7 @@ pub async fn list_races(
 
     match result {
         Ok(races) => (StatusCode::OK, Json(serde_json::json!(races))).into_response(),
-        Err(e) => map_error(e).into_response(),
+        Err(e) => map_error(&e).into_response(),
     }
 }
 
@@ -198,7 +198,7 @@ pub async fn get_laps(
         .unwrap_or(false);
 
     if !race_exists {
-        return map_error(StintlabError::RaceNotFound(id)).into_response();
+        return map_error(&StintlabError::RaceNotFound(id)).into_response();
     }
 
     let sql = match params.driver {
@@ -226,18 +226,21 @@ pub async fn get_laps(
         Ok(laps) => {
             let mut drivers: HashMap<String, Vec<LapResponse>> = HashMap::new();
             for lap in laps {
-                drivers.entry(lap.driver.clone()).or_default().push(LapResponse {
-                    lap_number: lap.lap_number,
-                    lap_time_ms: lap.lap_time_ms,
-                    sector1_ms: lap.sector1_ms,
-                    sector2_ms: lap.sector2_ms,
-                    sector3_ms: lap.sector3_ms,
-                    compound: lap.compound.to_string(),
-                    tire_age: lap.tire_age,
-                    position: lap.position,
-                    pit_in: lap.pit_in,
-                    pit_out: lap.pit_out,
-                });
+                drivers
+                    .entry(lap.driver.clone())
+                    .or_default()
+                    .push(LapResponse {
+                        lap_number: lap.lap_number,
+                        lap_time_ms: lap.lap_time_ms,
+                        sector1_ms: lap.sector1_ms,
+                        sector2_ms: lap.sector2_ms,
+                        sector3_ms: lap.sector3_ms,
+                        compound: lap.compound.to_string(),
+                        tire_age: lap.tire_age,
+                        position: lap.position,
+                        pit_in: lap.pit_in,
+                        pit_out: lap.pit_out,
+                    });
             }
             let response = LapsResponse {
                 race_id: id,
@@ -245,7 +248,7 @@ pub async fn get_laps(
             };
             (StatusCode::OK, Json(serde_json::json!(response))).into_response()
         }
-        Err(e) => map_error(e).into_response(),
+        Err(e) => map_error(&e).into_response(),
     }
 }
 
@@ -267,7 +270,7 @@ pub async fn get_stints(
         .unwrap_or(false);
 
     if !race_exists {
-        return map_error(StintlabError::RaceNotFound(id)).into_response();
+        return map_error(&StintlabError::RaceNotFound(id)).into_response();
     }
 
     let sql = match params.driver {
@@ -311,7 +314,7 @@ pub async fn get_stints(
             };
             (StatusCode::OK, Json(serde_json::json!(response))).into_response()
         }
-        Err(e) => map_error(e).into_response(),
+        Err(e) => map_error(&e).into_response(),
     }
 }
 
@@ -323,32 +326,31 @@ pub async fn predict_pit_window(
     let db = state.db.lock().expect("db lock poisoned");
 
     // Look up the race to get circuit_key and laps_total
-    let race = db
-        .query_row(
-            "SELECT id, season, round, name, circuit_key, date, laps_total
+    let race = db.query_row(
+        "SELECT id, season, round, name, circuit_key, date, laps_total
              FROM races WHERE id = ?1",
-            rusqlite::params![req.race_id],
-            |row| {
-                Ok((
-                    row.get::<_, String>(4)?,  // circuit_key
-                    row.get::<_, u16>(6)?,     // laps_total
-                ))
-            },
-        );
+        rusqlite::params![req.race_id],
+        |row| {
+            Ok((
+                row.get::<_, String>(4)?, // circuit_key
+                row.get::<_, u16>(6)?,    // laps_total
+            ))
+        },
+    );
 
     let (circuit_key, laps_total) = match race {
         Ok(r) => r,
         Err(rusqlite::Error::QueryReturnedNoRows) => {
-            return map_error(StintlabError::RaceNotFound(req.race_id)).into_response();
+            return map_error(&StintlabError::RaceNotFound(req.race_id)).into_response();
         }
         Err(e) => {
-            return map_error(StintlabError::Database(e.to_string())).into_response();
+            return map_error(&StintlabError::Database(e.to_string())).into_response();
         }
     };
 
     let current_compound: Compound = match req.current_compound.parse() {
         Ok(c) => c,
-        Err(e) => return map_error(e).into_response(),
+        Err(e) => return map_error(&e).into_response(),
     };
 
     // Load degradation models for this circuit
@@ -361,7 +363,7 @@ pub async fn predict_pit_window(
     }
 
     if models.is_empty() {
-        return map_error(StintlabError::InsufficientData(
+        return map_error(&StintlabError::InsufficientData(
             "no degradation models available for this circuit".into(),
         ))
         .into_response();
@@ -386,7 +388,7 @@ pub async fn predict_pit_window(
             };
             (StatusCode::OK, Json(serde_json::json!(response))).into_response()
         }
-        Err(e) => map_error(e).into_response(),
+        Err(e) => map_error(&e).into_response(),
     }
 }
 

@@ -1,6 +1,7 @@
 [workspace]
 members = ["stintlab-core", "stintlab-ingest", "stintlab-web"]
 # stintlab-viz excluded from default workspace (WASM target, built separately)
+exclude = ["stintlab-viz"]
 resolver = "3"
 
 [workspace.package]

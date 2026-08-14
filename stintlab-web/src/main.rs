@@ -25,7 +25,7 @@ struct Cli {
     #[arg(long, default_value_t = 3000)]
     port: u16,
 
-    /// Path to the SQLite database file.
+    /// Path to the `SQLite` database file.
     #[arg(long, default_value = "data/races.db")]
     db: PathBuf,
 

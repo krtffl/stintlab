@@ -91,7 +91,7 @@ pub fn normalize_laps(
                 sector3_ms,
                 compound,
                 tire_age,
-                position: 0, // OpenF1 laps endpoint doesn't provide position directly
+                position: 0,   // OpenF1 laps endpoint doesn't provide position directly
                 pit_in: false, // Will be derived from stint boundaries
                 pit_out,
             })
@@ -102,9 +102,7 @@ pub fn normalize_laps(
 /// Build a lookup: `(driver_number, lap_number)` to `(Compound, tire_age)`.
 ///
 /// Uses stint data to determine what compound and tire age each lap has.
-pub fn build_stint_compound_map(
-    raw_stints: &[RawStint],
-) -> HashMap<(u16, u16), (Compound, u16)> {
+pub fn build_stint_compound_map(raw_stints: &[RawStint]) -> HashMap<(u16, u16), (Compound, u16)> {
     let mut map = HashMap::new();
 
     for stint in raw_stints {
@@ -186,9 +184,9 @@ pub fn derive_laps_total(raw_laps: &[RawLap]) -> u16 {
 pub fn mark_pit_in_laps(laps: &mut [Lap], stints: &[Stint]) {
     for stint in stints {
         // If this stint is not the last one for this driver, the end_lap is a pit-in lap
-        let is_last = !stints.iter().any(|s| {
-            s.driver == stint.driver && s.stint_number == stint.stint_number + 1
-        });
+        let is_last = !stints
+            .iter()
+            .any(|s| s.driver == stint.driver && s.stint_number == stint.stint_number + 1);
 
         if !is_last {
             for lap in laps.iter_mut() {

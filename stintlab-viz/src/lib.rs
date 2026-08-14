@@ -3,15 +3,23 @@ pub mod colors;
 mod lap_chart;
 mod strategy_timeline;
 
+use std::cell::RefCell;
+
 use wasm_bindgen::prelude::*;
 
 use canvas::Canvas;
 use lap_chart::{DriverLaps, LapChartOptions, ModelCurve};
 use strategy_timeline::{DriverStints, TimelineOptions};
 
-/// Global state holding canvas references.
-static mut STRATEGY_CANVAS: Option<Canvas> = None;
-static mut LAP_CHART_CANVAS: Option<Canvas> = None;
+thread_local! {
+    /// Global state holding canvas references.
+    ///
+    /// `thread_local!` rather than `static mut`: WASM modules are
+    /// single-threaded, and this keeps the state safe to touch without
+    /// `unsafe` (`static_mut_refs` is deny-by-default in edition 2024).
+    static STRATEGY_CANVAS: RefCell<Option<Canvas>> = const { RefCell::new(None) };
+    static LAP_CHART_CANVAS: RefCell<Option<Canvas>> = const { RefCell::new(None) };
+}
 
 /// Initialize the WASM module. Must be called once before any rendering.
 ///
@@ -24,13 +32,11 @@ pub fn init(canvas_ids: JsValue) -> Result<(), JsValue> {
     let ids: CanvasIds = serde_wasm_bindgen::from_value(canvas_ids)
         .map_err(|e| JsValue::from_str(&format!("invalid canvas_ids: {e}")))?;
 
-    unsafe {
-        if let Some(ref id) = ids.strategy {
-            STRATEGY_CANVAS = Some(Canvas::from_id(id).map_err(JsValue::from)?);
-        }
-        if let Some(ref id) = ids.lap_chart {
-            LAP_CHART_CANVAS = Some(Canvas::from_id(id).map_err(JsValue::from)?);
-        }
+    if let Some(ref id) = ids.strategy {
+        STRATEGY_CANVAS.set(Some(Canvas::from_id(id).map_err(JsValue::from)?));
+    }
+    if let Some(ref id) = ids.lap_chart {
+        LAP_CHART_CANVAS.set(Some(Canvas::from_id(id).map_err(JsValue::from)?));
     }
 
     web_sys::console::log_1(&"stintlab-viz initialized".into());
@@ -48,23 +54,22 @@ pub fn render_strategy_timeline(
     laps_total: u16,
     options: JsValue,
 ) -> Result<(), JsValue> {
-    let canvas = unsafe {
-        STRATEGY_CANVAS
-            .as_ref()
-            .ok_or_else(|| JsValue::from_str("strategy canvas not initialized"))?
-    };
-
     let drivers: Vec<DriverStints> = serde_wasm_bindgen::from_value(stints_json)
         .map_err(|e| JsValue::from_str(&format!("invalid stint data: {e}")))?;
 
-    let opts: TimelineOptions = serde_wasm_bindgen::from_value(options)
-        .unwrap_or(TimelineOptions {
+    let opts: TimelineOptions =
+        serde_wasm_bindgen::from_value(options).unwrap_or(TimelineOptions {
             highlight_driver: None,
             show_compound_labels: true,
         });
 
-    strategy_timeline::render(canvas, &drivers, laps_total, &opts);
-    Ok(())
+    STRATEGY_CANVAS.with_borrow(|slot| {
+        let canvas = slot
+            .as_ref()
+            .ok_or_else(|| JsValue::from_str("strategy canvas not initialized"))?;
+        strategy_timeline::render(canvas, &drivers, laps_total, &opts);
+        Ok(())
+    })
 }
 
 /// Render the lap time evolution chart.
@@ -78,12 +83,6 @@ pub fn render_lap_chart(
     model_curves: JsValue,
     options: JsValue,
 ) -> Result<(), JsValue> {
-    let canvas = unsafe {
-        LAP_CHART_CANVAS
-            .as_ref()
-            .ok_or_else(|| JsValue::from_str("lap chart canvas not initialized"))?
-    };
-
     let drivers: Vec<DriverLaps> = serde_wasm_bindgen::from_value(laps_json)
         .map_err(|e| JsValue::from_str(&format!("invalid lap data: {e}")))?;
 
@@ -94,15 +93,20 @@ pub fn render_lap_chart(
             .map_err(|e| JsValue::from_str(&format!("invalid model curves: {e}")))?
     };
 
-    let opts: LapChartOptions = serde_wasm_bindgen::from_value(options)
-        .unwrap_or(LapChartOptions {
+    let opts: LapChartOptions =
+        serde_wasm_bindgen::from_value(options).unwrap_or(LapChartOptions {
             show_pit_markers: true,
             y_min_ms: None,
             y_max_ms: None,
         });
 
-    lap_chart::render(canvas, &drivers, &curves, &opts);
-    Ok(())
+    LAP_CHART_CANVAS.with_borrow(|slot| {
+        let canvas = slot
+            .as_ref()
+            .ok_or_else(|| JsValue::from_str("lap chart canvas not initialized"))?;
+        lap_chart::render(canvas, &drivers, &curves, &opts);
+        Ok(())
+    })
 }
 
 /// Export a canvas to PNG. Returns base64-encoded data URL.
@@ -134,10 +138,8 @@ pub fn export_png(viz_type: String) -> Result<String, JsValue> {
 /// Free all allocated resources. Call on page unload.
 #[wasm_bindgen]
 pub fn dispose() {
-    unsafe {
-        STRATEGY_CANVAS = None;
-        LAP_CHART_CANVAS = None;
-    }
+    STRATEGY_CANVAS.set(None);
+    LAP_CHART_CANVAS.set(None);
     web_sys::console::log_1(&"stintlab-viz disposed".into());
 }
 

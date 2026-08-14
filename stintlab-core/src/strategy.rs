@@ -34,12 +34,13 @@ pub fn predict_pit_window(
 ) -> Result<PitWindowPrediction, StintlabError> {
     let pit_loss = pit_stop_loss_ms.unwrap_or(DEFAULT_PIT_STOP_LOSS_MS);
 
-    let current_model = models.get(&current_compound).ok_or_else(|| {
-        StintlabError::DegradationModelNotFound {
-            compound: current_compound,
-            circuit_key: String::new(),
-        }
-    })?;
+    let current_model =
+        models
+            .get(&current_compound)
+            .ok_or_else(|| StintlabError::DegradationModelNotFound {
+                compound: current_compound,
+                circuit_key: String::new(),
+            })?;
 
     if current_lap >= laps_total {
         return Err(StintlabError::InvalidInput(
@@ -76,13 +77,8 @@ pub fn predict_pit_window(
             )?;
 
             // Time on new tires: candidate_pit_lap+1 through laps_total (fresh, age 1)
-            let next_stint_time = compute_stint_time(
-                next_model,
-                1,
-                candidate_pit_lap + 1,
-                laps_total,
-                laps_total,
-            )?;
+            let next_stint_time =
+                compute_stint_time(next_model, 1, candidate_pit_lap + 1, laps_total, laps_total)?;
 
             let total = current_stint_time + f64::from(pit_loss) + next_stint_time;
             let r_sq_min = current_model.r_squared.min(next_model.r_squared);
@@ -120,7 +116,9 @@ pub fn predict_pit_window(
     // Window: optimal +/- adjusted by confidence
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let window_half = ((2.0 * (1.0 - confidence)).ceil() as u16).max(1);
-    let window_start = best_pit_lap.saturating_sub(window_half).max(current_lap + 1);
+    let window_start = best_pit_lap
+        .saturating_sub(window_half)
+        .max(current_lap + 1);
     let window_end = (best_pit_lap + window_half).min(latest_pit);
 
     Ok(PitWindowPrediction {
@@ -209,8 +207,7 @@ mod tests {
     #[test]
     fn predict_pit_window_returns_valid_result() {
         let models = make_models();
-        let prediction =
-            predict_pit_window(57, 10, Compound::Medium, 10, &models, None).unwrap();
+        let prediction = predict_pit_window(57, 10, Compound::Medium, 10, &models, None).unwrap();
 
         assert!(prediction.optimal_lap > 10);
         assert!(prediction.optimal_lap <= 52);
@@ -223,8 +220,7 @@ mod tests {
     #[test]
     fn predict_pit_window_prefers_lower_deg_for_long_stint() {
         let models = make_models();
-        let prediction =
-            predict_pit_window(57, 5, Compound::Soft, 5, &models, None).unwrap();
+        let prediction = predict_pit_window(57, 5, Compound::Soft, 5, &models, None).unwrap();
 
         assert!(
             prediction.next_compound == Compound::Hard
@@ -237,8 +233,7 @@ mod tests {
     #[test]
     fn predict_pit_window_late_race_no_pit() {
         let models = make_models();
-        let prediction =
-            predict_pit_window(57, 55, Compound::Medium, 20, &models, None).unwrap();
+        let prediction = predict_pit_window(57, 55, Compound::Medium, 20, &models, None).unwrap();
 
         assert!(prediction.optimal_lap >= 55);
     }
@@ -246,8 +241,7 @@ mod tests {
     #[test]
     fn predict_pit_window_missing_current_model() {
         let models = make_models();
-        let result =
-            predict_pit_window(57, 10, Compound::Intermediate, 10, &models, None);
+        let result = predict_pit_window(57, 10, Compound::Intermediate, 10, &models, None);
         assert!(result.is_err());
     }
 
